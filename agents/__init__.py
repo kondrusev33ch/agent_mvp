@@ -12,8 +12,6 @@ from langchain.output_parsers import PydanticOutputParser
 from pydantic import BaseModel, Field, RootModel
 from langchain_experimental.tools import PythonAstREPLTool
 from langchain.agents import create_openai_tools_agent, AgentExecutor
-from langchain_core.chat_history import InMemoryChatMessageHistory
-from langchain_core.runnables.history import RunnableWithMessageHistory
 
 __all__ = ["ingest_prices", "ask_insights"]
 
@@ -47,14 +45,16 @@ def _get_llm(temp: float) -> ChatOpenAI:
 
 def _fetch_html(url: str) -> str:
     """Download and sanitize page content."""
-    # proxy = os.getenv("PROXY")
-    # proxies = {"http": proxy, "https": proxy} if proxy else None
-    # headers = {"User-Agent": "Mozilla/5.0"}
-    # resp = requests.get(url, timeout=15, proxies=proxies, headers=headers)
-    # resp.raise_for_status()
+    proxy = os.getenv("PROXY")
+    proxies = {"http": proxy, "https": proxy} if proxy else None
+    headers = {"User-Agent": "Mozilla/5.0"}
+    resp = requests.get(url, timeout=15, proxies=proxies, headers=headers)
+    resp.raise_for_status()
 
-    with open("example.html", "r", encoding="utf-8") as file:
-      html_text = file.read()
+    html_text = resp.text
+
+    # with open("example.html", "r", encoding="utf-8") as file:
+    #   html_text = file.read()
 
     return BeautifulSoup(html_text, "lxml").get_text(" ", strip=True)
 
@@ -111,7 +111,7 @@ def ingest_prices(csv_path: str) -> pd.DataFrame:
 
 def ask_insights(df: pd.DataFrame, question: str) -> str:
     """Answer analytical question about dataframe."""
-    llm = _get_llm(0.2)
+    llm = _get_llm(0.0)
     tool = PythonAstREPLTool(locals={"df": df})
     tools = [tool]
     prompt = ChatPromptTemplate.from_messages(
@@ -130,13 +130,6 @@ def ask_insights(df: pd.DataFrame, question: str) -> str:
         ]
     )
     agent = create_openai_tools_agent(llm=llm, tools=tools, prompt=prompt)
-    history = InMemoryChatMessageHistory()
-
-    def get_session_history(_: str) -> InMemoryChatMessageHistory:
-        return history
-
-    agent_with_history = RunnableWithMessageHistory(
-        agent, get_session_history, history_messages_key="chat_history"
-    )
-    executor = AgentExecutor(agent=agent_with_history, tools=tools)
-    return executor.invoke({"question": question}, config={"configurable": {"session_id": "0"}})["output"]
+  
+    executor = AgentExecutor(agent=agent, tools=tools)
+    return executor.invoke({"question": question})["output"]
