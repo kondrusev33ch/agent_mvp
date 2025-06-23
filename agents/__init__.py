@@ -1,7 +1,6 @@
 import os
 import sys
 import json
-from dataclasses import dataclass
 from typing import List, Dict
 
 import pandas as pd
@@ -10,7 +9,7 @@ from bs4 import BeautifulSoup
 from langchain_openai import ChatOpenAI
 from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain.output_parsers import PydanticOutputParser
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, RootModel
 from langchain_experimental.tools import PythonAstREPLTool
 from langchain.agents import create_openai_tools_agent, AgentExecutor
 from langchain_core.chat_history import InMemoryChatMessageHistory
@@ -24,17 +23,20 @@ class Product(BaseModel):
     manufacturer: str = Field(..., description="manufacturer name")
     price: float = Field(..., description="price as float")
 
+class Products(RootModel[List[Product]]):
+    """Root model representing a list of products."""
+
 # Output parser for the LLM
-_product_parser = PydanticOutputParser(pydantic_object=Product)
+_products_parser = PydanticOutputParser(pydantic_object=Products)
 
 # Prompt template for ingestion agent
 _ingest_prompt = ChatPromptTemplate.from_template(
     """Ты — эксперт-фармацевт и веб-скрейпер.
-Проанализируй HTML-контент страницы и верни данные.
+Проанализируй HTML-контент страницы и верни JSON-массив товаров.
 {format_instructions}
 <HTML>{html_text}</HTML>
-Только JSON, без комментариев."""
-).partial(format_instructions=_product_parser.get_format_instructions())
+Только массив JSON, без комментариев."""
+).partial(format_instructions=_products_parser.get_format_instructions())
 
 # LLM used for both agents
 def _get_llm(temp: float) -> ChatOpenAI:
@@ -63,10 +65,10 @@ def _parse_product(html_text: str) -> List[Product]:
     # Obtain raw JSON text from the LLM
     raw = (_ingest_prompt | llm).invoke({"html_text": html_text}).content
 
-    # First try to parse as a single product using the StructuredOutputParser
+    # First try to parse using the structured output parser
     try:
-        product = _product_parser.invoke(raw)
-        return [product]
+        products = _products_parser.invoke(raw)
+        return products.__root__
     except Exception:
         pass
 

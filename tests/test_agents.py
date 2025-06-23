@@ -47,3 +47,28 @@ def test_fetch_html_uses_user_agent():
         agents._fetch_html("http://example.com")
         headers = mock_get.call_args.kwargs.get("headers", {})
         assert "User-Agent" in headers
+
+
+def test_parse_product_handles_list():
+    content = (
+        '[{"sku": "A", "manufacturer": "B", "price": 1.0},'
+        ' {"sku": "C", "manufacturer": "D", "price": 2.0}]'
+    )
+
+    class DummyPrompt:
+        def __or__(self, _other):
+            class Seq:
+                def invoke(self, *_args, **_kwargs):
+                    class Resp:
+                        def __init__(self, text):
+                            self.content = text
+
+                    return Resp(content)
+
+            return Seq()
+
+    with mock.patch("agents._get_llm"), mock.patch("agents._ingest_prompt", DummyPrompt()):
+        result = agents._parse_product("<html></html>")
+
+    assert len(result) == 2
+    assert result[0].sku == "A"
