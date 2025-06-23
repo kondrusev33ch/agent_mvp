@@ -1,5 +1,7 @@
 langchain
 langchain-experimental
+langchain-community
+langchain-openai
 openai
 pandas
 beautifulsoup4

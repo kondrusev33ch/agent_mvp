@@ -6,7 +6,7 @@ from typing import List, Dict
 import pandas as pd
 import requests
 from bs4 import BeautifulSoup
-from langchain.chat_models import ChatOpenAI
+from langchain_openai import ChatOpenAI
 from langchain.prompts import ChatPromptTemplate
 from langchain.output_parsers import PydanticOutputParser
 from pydantic import BaseModel, Field
@@ -36,7 +36,9 @@ _ingest_prompt = ChatPromptTemplate.from_template(
 
 # LLM used for both agents
 def _get_llm(temp: float) -> ChatOpenAI:
-    return ChatOpenAI(model_name="gpt-4o-mini", temperature=temp)
+    return ChatOpenAI(model_name="gpt-4o-mini",
+                      api_key=os.getenv("OPENAI_API_KEY"),
+                      temperature=temp)
 
 
 def _fetch_html(url: str) -> str:
