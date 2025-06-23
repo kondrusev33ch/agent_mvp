@@ -7,7 +7,7 @@ import pandas as pd
 import requests
 from bs4 import BeautifulSoup
 from langchain_openai import ChatOpenAI
-from langchain.prompts import ChatPromptTemplate
+from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain.output_parsers import PydanticOutputParser
 from pydantic import BaseModel, Field
 from langchain_experimental.tools import PythonAstREPLTool
@@ -90,7 +90,9 @@ def ask_insights(df: pd.DataFrame, question: str) -> str:
                 "Если код что-то выводит (таблицу или график), покажи результат пользователю. "
                 "В конце — краткий вывод.",
             ),
+            MessagesPlaceholder("chat_history", optional=True),
             ("human", "Вопрос: {question}"),
+            MessagesPlaceholder("agent_scratchpad"),
         ]
     )
     agent = create_openai_tools_agent(llm=llm, tools=tools, prompt=prompt)
