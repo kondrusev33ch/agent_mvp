@@ -1,0 +1,8 @@
+langchain
+langchain-experimental
+openai
+pandas
+beautifulsoup4
+lxml
+requests
+pyarrow
