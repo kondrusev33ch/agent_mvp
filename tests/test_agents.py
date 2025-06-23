@@ -39,3 +39,11 @@ def test_ask_insights():
             with mock.patch("agents._get_llm"):
                 result = agents.ask_insights(df, "question")
     assert result == "ok"
+
+
+def test_fetch_html_uses_user_agent():
+    resp = DummyResponse("<html></html>")
+    with mock.patch("agents.requests.get", return_value=resp) as mock_get:
+        agents._fetch_html("http://example.com")
+        headers = mock_get.call_args.kwargs.get("headers", {})
+        assert "User-Agent" in headers

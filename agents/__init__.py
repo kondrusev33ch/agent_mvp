@@ -45,7 +45,8 @@ def _fetch_html(url: str) -> str:
     """Download and sanitize page content."""
     proxy = os.getenv("PROXY")
     proxies = {"http": proxy, "https": proxy} if proxy else None
-    resp = requests.get(url, timeout=15, proxies=proxies)
+    headers = {"User-Agent": "Mozilla/5.0"}
+    resp = requests.get(url, timeout=15, proxies=proxies, headers=headers)
     resp.raise_for_status()
     return BeautifulSoup(resp.text, "lxml").get_text(" ", strip=True)
 
