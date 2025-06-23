@@ -1,5 +1,6 @@
 import os
 import sys
+import json
 from dataclasses import dataclass
 from typing import List, Dict
 
@@ -52,11 +53,34 @@ def _fetch_html(url: str) -> str:
     return BeautifulSoup(resp.text, "lxml").get_text(" ", strip=True)
 
 
-def _parse_product(html_text: str) -> Product:
-    """Call LLM to parse product info from HTML text."""
+def _parse_product(html_text: str) -> List[Product]:
+    """Call LLM to parse product info from HTML text.
+
+    The model may return a single product or a list of products. This
+    function normalizes the output to ``List[Product]``.
+    """
     llm = _get_llm(0.0)
-    chain = _ingest_prompt | llm | _product_parser
-    return chain.invoke({"html_text": html_text})
+    # Obtain raw JSON text from the LLM
+    raw = (_ingest_prompt | llm).invoke({"html_text": html_text}).content
+
+    # First try to parse as a single product using the StructuredOutputParser
+    try:
+        product = _product_parser.invoke(raw)
+        return [product]
+    except Exception:
+        pass
+
+    # Fallback: parse JSON manually to handle lists
+    try:
+        data = json.loads(raw)
+    except Exception as exc:  # pragma: no cover - defensive branch
+        raise RuntimeError(f"Failed to load JSON: {exc}") from exc
+
+    if isinstance(data, list):
+        return [Product(**item) for item in data]
+    if isinstance(data, dict):
+        return [Product(**data)]
+    raise ValueError("Unsupported JSON format")
 
 
 def ingest_prices(csv_path: str) -> pd.DataFrame:
@@ -66,8 +90,9 @@ def ingest_prices(csv_path: str) -> pd.DataFrame:
     for url in urls:
         try:
             text = _fetch_html(url)
-            product = _parse_product(text)
-            records.append(product.dict())
+            products = _parse_product(text)
+            for product in products:
+                records.append(product.model_dump())
         except Exception as exc:
             print(f"Failed to process {url}: {exc}", file=sys.stderr)
     df = pd.DataFrame(records, columns=["sku", "manufacturer", "price"])
