@@ -68,6 +68,7 @@ def _parse_product(html_text: str) -> List[Product]:
     llm = _get_llm(0.0)
     # Obtain raw JSON text from the LLM
     raw = (_ingest_prompt | llm).invoke({"html_text": html_text}).content
+    raw = raw[raw.find("[") : raw.rfind("]") + 1]
 
     # First try to parse using the structured output parser
     try:
