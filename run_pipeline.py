@@ -11,5 +11,5 @@ if __name__ == "__main__":
 
     df = ingest_prices(csv_path)
     print(df.head())
-    answer = ask_insights(df, question)
-    print(answer)
+    # answer = ask_insights(df, question)
+    # print(answer)

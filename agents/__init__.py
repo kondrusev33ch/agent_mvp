@@ -47,12 +47,16 @@ def _get_llm(temp: float) -> ChatOpenAI:
 
 def _fetch_html(url: str) -> str:
     """Download and sanitize page content."""
-    proxy = os.getenv("PROXY")
-    proxies = {"http": proxy, "https": proxy} if proxy else None
-    headers = {"User-Agent": "Mozilla/5.0"}
-    resp = requests.get(url, timeout=15, proxies=proxies, headers=headers)
-    resp.raise_for_status()
-    return BeautifulSoup(resp.text, "lxml").get_text(" ", strip=True)
+    # proxy = os.getenv("PROXY")
+    # proxies = {"http": proxy, "https": proxy} if proxy else None
+    # headers = {"User-Agent": "Mozilla/5.0"}
+    # resp = requests.get(url, timeout=15, proxies=proxies, headers=headers)
+    # resp.raise_for_status()
+
+    with open("example.html", "r", encoding="utf-8") as file:
+      html_text = file.read()
+
+    return BeautifulSoup(html_text, "lxml").get_text(" ", strip=True)
 
 
 def _parse_product(html_text: str) -> List[Product]:
