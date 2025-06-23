@@ -16,7 +16,15 @@ def test_ingest_prices(tmp_path):
     csv.write_text("urls\nhttp://example.com\n")
 
     html = "<html><body>Ibuprofen ACME 100</body></html>"
-    with mock.patch("agents.requests.get", return_value=DummyResponse(html)):
+
+    class DummySession:
+        def __init__(self):
+            self.get = mock.Mock(return_value=DummyResponse(html))
+
+        def mount(self, *_args, **_kwargs):
+            pass
+
+    with mock.patch("agents.requests.Session", return_value=DummySession()):
         with mock.patch("agents._parse_product") as mock_parse:
             mock_parse.return_value = [agents.Product(sku="Ibu", manufacturer="ACME", price=100.0)]
             df = agents.ingest_prices(str(csv))
@@ -43,9 +51,18 @@ def test_ask_insights():
 
 def test_fetch_html_uses_user_agent():
     resp = DummyResponse("<html></html>")
-    with mock.patch("agents.requests.get", return_value=resp) as mock_get:
+
+    class DummySession:
+        def __init__(self):
+            self.get = mock.Mock(return_value=resp)
+
+        def mount(self, *_args, **_kwargs):
+            pass
+
+    dummy = DummySession()
+    with mock.patch("agents.requests.Session", return_value=dummy):
         agents._fetch_html("http://example.com")
-        headers = mock_get.call_args.kwargs.get("headers", {})
+        headers = dummy.get.call_args.kwargs.get("headers", {})
         assert "User-Agent" in headers
 
 

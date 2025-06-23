@@ -1,10 +1,13 @@
 import os
 import sys
 import json
+import random
 from typing import List, Dict
 
 import pandas as pd
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 from bs4 import BeautifulSoup
 from langchain_openai import ChatOpenAI
 from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
@@ -44,17 +47,52 @@ def _get_llm(temp: float) -> ChatOpenAI:
 
 
 def _fetch_html(url: str) -> str:
-    """Download and sanitize page content."""
+    """Download and sanitize page content using retries and random UA."""
     proxy = os.getenv("PROXY")
     proxies = {"http": proxy, "https": proxy} if proxy else None
-    headers = {"User-Agent": "Mozilla/5.0"}
-    resp = requests.get(url, timeout=15, proxies=proxies, headers=headers)
+
+    user_agents = [
+        (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/122.0 Safari/537.36"
+        ),
+        (
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+            "AppleWebKit/605.1.15 (KHTML, like Gecko) "
+            "Version/17.0 Safari/605.1.15"
+        ),
+        (
+            "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:121.0) "
+            "Gecko/20100101 Firefox/121.0"
+        ),
+    ]
+
+    headers = {
+        "User-Agent": random.choice(user_agents),
+        "Accept": (
+            "text/html,application/xhtml+xml,application/xml;q=0.9,"
+            "image/webp,*/*;q=0.8"
+        ),
+        "Accept-Language": "en-US,en;q=0.9",
+        "Connection": "keep-alive",
+    }
+
+    session = requests.Session()
+    retry = Retry(
+        total=3,
+        backoff_factor=0.5,
+        status_forcelist=[429, 500, 502, 503, 504],
+        allowed_methods=["GET"],
+    )
+    adapter = HTTPAdapter(max_retries=retry)
+    session.mount("http://", adapter)
+    session.mount("https://", adapter)
+
+    resp = session.get(url, timeout=15, proxies=proxies, headers=headers)
     resp.raise_for_status()
 
     html_text = resp.text
-
-    # with open("example.html", "r", encoding="utf-8") as file:
-    #   html_text = file.read()
 
     return BeautifulSoup(html_text, "lxml").get_text(" ", strip=True)
 
