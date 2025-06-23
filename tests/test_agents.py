@@ -18,7 +18,7 @@ def test_ingest_prices(tmp_path):
     html = "<html><body>Ibuprofen ACME 100</body></html>"
     with mock.patch("agents.requests.get", return_value=DummyResponse(html)):
         with mock.patch("agents._parse_product") as mock_parse:
-            mock_parse.return_value = agents.Product(sku="Ibu", manufacturer="ACME", price=100.0)
+            mock_parse.return_value = [agents.Product(sku="Ibu", manufacturer="ACME", price=100.0)]
             df = agents.ingest_prices(str(csv))
 
     assert list(df.columns) == ["sku", "manufacturer", "price"]
