@@ -1,13 +1,11 @@
 from agents import ingest_prices, ask_insights
-import argparse
 
-parser = argparse.ArgumentParser(description="Pharma price pipeline")
-parser.add_argument("--csv", required=True, help="CSV file with urls column")
-parser.add_argument("--question", required=True, help="Question for insights agent")
-args = parser.parse_args()
 
 if __name__ == "__main__":
-    df = ingest_prices(args.csv)
+    csv_path = "urls.csv"
+    question = "Что дешевле, аквадетрим капли 30 мл или фортодетрим 30 капсул?"
+
+    df = ingest_prices(csv_path)
     print(df.head())
-    answer = ask_insights(df, args.question)
+    answer = ask_insights(df, question)
     print(answer)

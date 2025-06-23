@@ -64,7 +64,7 @@ def ingest_prices(csv_path: str) -> pd.DataFrame:
             text = _fetch_html(url)
             product = _parse_product(text)
             records.append(product.dict())
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             print(f"Failed to process {url}: {exc}", file=sys.stderr)
     df = pd.DataFrame(records, columns=["sku", "manufacturer", "price"])
     tmp = "prices.parquet.tmp"
