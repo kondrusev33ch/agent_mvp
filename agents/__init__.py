@@ -11,8 +11,9 @@ from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain.output_parsers import PydanticOutputParser
 from pydantic import BaseModel, Field
 from langchain_experimental.tools import PythonAstREPLTool
-from langchain.memory import ConversationBufferMemory
 from langchain.agents import create_openai_tools_agent, AgentExecutor
+from langchain_core.chat_history import InMemoryChatMessageHistory
+from langchain_core.runnables.history import RunnableWithMessageHistory
 
 __all__ = ["ingest_prices", "ask_insights"]
 
@@ -97,6 +98,13 @@ def ask_insights(df: pd.DataFrame, question: str) -> str:
         ]
     )
     agent = create_openai_tools_agent(llm=llm, tools=tools, prompt=prompt)
-    memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
-    executor = AgentExecutor(agent=agent, tools=tools, memory=memory)
-    return executor.invoke({"question": question})["output"]
+    history = InMemoryChatMessageHistory()
+
+    def get_session_history(_: str) -> InMemoryChatMessageHistory:
+        return history
+
+    agent_with_history = RunnableWithMessageHistory(
+        agent, get_session_history, history_messages_key="chat_history"
+    )
+    executor = AgentExecutor(agent=agent_with_history, tools=tools)
+    return executor.invoke({"question": question}, config={"configurable": {"session_id": "0"}})["output"]
